@@ -7,4 +7,8 @@ void sendToDebug(String message)
    {
      Serial.print(message);
    }
+/*   display.clear();
+   display.drawStringMaxWidth(0, 0, 128, message);
+   display.display();
+*/
 }

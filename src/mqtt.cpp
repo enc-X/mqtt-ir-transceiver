@@ -5,8 +5,6 @@
  */
 void MQTTcallback(char* topic, byte* payload, unsigned int length)
 {
-  int i = 0;
-
   char messageBuf[MQTT_MAX_PACKET_SIZE];
   for (unsigned int i = 0; i < length; i++)
   {
@@ -168,6 +166,9 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length)
       if (size>0)
       {
         sendToDebug("*IR: transmitting raw data from slot\n");
+        #ifdef DISPLAY_SIZE
+        printOled(String("Send raw [") + slotNo + "]");
+        #endif
         irsend.sendRaw(rawIrData, size-1, (uint16_t)rawIrData[size-1]);
       }
     }
@@ -181,7 +182,7 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length)
     sendToDebug(String("*IR: Sending sequence: ")+msgString);
     unsigned int msgLen = msgString.length();
     String allowedChars = String("0123456789,");
-    for (int i=0;i< msgLen;i++)
+    for (unsigned int i=0;i< msgLen;i++)
     {
       if (allowedChars.indexOf(msgString[i])==-1)
       {
@@ -225,7 +226,7 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length)
       }
       elementIdx++;
     } while (commIdx>-1);
-    // Sending of ir codes sequnece
+    // Sending of ir codes sequence
     for (int i=0;i<elementIdx;i++)
     {
       int slotNo=rawSequence[i];
@@ -245,6 +246,9 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length)
             sendToDebug(String(rawIrData[j]));
           }
           sendToDebug("\n*IR: Transmitting raw data sequence\n");
+          #ifdef DISPLAY_SIZE
+          printOled(String("Send raw [") + slotNo + "]");
+          #endif
           irsend.sendRaw(rawIrData, size-1, rawIrData[size-1]);
         }
       }
@@ -296,7 +300,7 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length)
     {
       unsigned int msgLen = msgString.length();
       String allowedChars = String("0123456789,");
-      for (int i=0;i< msgLen;i++)
+      for (unsigned int i=0;i< msgLen;i++)
       {
         if (allowedChars.indexOf(msgString[i])==-1)
         {
@@ -356,6 +360,9 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length)
         // Send GC
         sendToDebug("*IR: Send GC\n");
         sendToDebug(String("*IR: Elements to send: ")+elementIdx+"\n");
+        #ifdef DISPLAY_SIZE
+        printOled(String("Send GC [#") + elementIdx + "]");
+        #endif
         irsend.sendGC(rawIrData,elementIdx);
         sendToDebug("*IR: GC send done.\n");
       }
@@ -363,6 +370,9 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length)
       {
         sendToDebug("*IR: Send RAW from MQTT\n");
         sendToDebug(String("*IR: No of elements to send: ")+(elementIdx-1)+", frequency="+rawIrData[elementIdx-1]+"kHz\n");
+        #ifdef DISPLAY_SIZE
+        printOled(String("Send raw [#") + (elementIdx-1) + "]");
+        #endif
         irsend.sendRaw(rawIrData,elementIdx-1,rawIrData[elementIdx-1]);
         sendToDebug("*IR: RAW send done.\n");
       }
@@ -370,32 +380,58 @@ void MQTTcallback(char* topic, byte* payload, unsigned int length)
     else if (irTypStr=="NEC")
     {
       sendToDebug(String("*IR: Send NEC:")+msgInt);
+      #ifdef DISPLAY_SIZE
+      printOled(String("Send NEC:\n") + msgInt);
+      #endif
       irsend.sendNEC(msgInt, irBitsInt);
     }
     else if (irTypStr=="RC5")
     {
       sendToDebug(String("*IR: Send RC5:")+msgInt+" (bits: "+irBitsInt+")\n");
+      #ifdef DISPLAY_SIZE
+      printOled(String("Send RC5:\n") + msgInt+"\n(bits: "+irBitsInt+")");
+      #endif
       irsend.sendRC5(msgInt, irBitsInt);
     }
     else if (irTypStr=="RC6")
     {
       sendToDebug(String("*IR: Send RC6:")+msgInt+" (bits: "+irBitsInt+")\n");
+      #ifdef DISPLAY_SIZE
+      printOled(String("Send RC6:\n") + msgInt+"\n(bits: "+irBitsInt+")");
+      #endif
       irsend.sendRC6(msgInt, irBitsInt);
     }
     else if (irTypStr=="LG")
     {
       sendToDebug(String("*IR: Send LG:")+msgInt+" (bits: "+irBitsInt+")\n");
+      #ifdef DISPLAY_SIZE
+      printOled(String("Send LG:\n") + msgInt+"\n(bits: "+irBitsInt+")");
+      #endif
       irsend.sendLG(msgInt, irBitsInt);
     }
     else if (irTypStr=="SONY")
     {
       sendToDebug(String("*IR: Send Sony:")+msgInt+" (bits: "+irBitsInt+")\n");
+      #ifdef DISPLAY_SIZE
+      printOled(String("Send SONY:\n") + msgInt+"\n(bits: "+irBitsInt+")");
+      #endif
       irsend.sendSony(msgInt, irBitsInt);
     }
     else if (irTypStr=="SAMSUNG")
     {
       sendToDebug(String("*IR: Send Samsung:")+msgInt+" (bits: "+irBitsInt+")\n");
+      #ifdef DISPLAY_SIZE
+      printOled(String("Send SAMSUNG:\n") + msgInt+"\n(bits: "+irBitsInt+")");
+      #endif
       irsend.sendSAMSUNG(msgInt, irBitsInt);
+    }
+    else if (irTypStr=="PANASONIC")
+    {
+      sendToDebug(String("*IR: Send Panasonic:")+msgInt+" (bits: "+irBitsInt+")\n");
+      #ifdef DISPLAY_SIZE
+      printOled(String("Send PANASONIC:\n") + msgInt+"\n(bits: "+irBitsInt+")");
+      #endif
+      irsend.sendPanasonic(irPanasAddrStr.toInt(), msgInt, irBitsInt);
     }
   }
 
@@ -424,10 +460,20 @@ void connect_to_MQTT()
 
   while (conn_counter > 0)
   {
-    sendToDebug(String("*IR: MQTT user:")+ mqtt_user + "\n");
-    sendToDebug("*IR: MQTT pass: ********\n");
     String topicWill = String(mqtt_prefix)+ SUFFIX_WILL;
-    if (mqttClient.connect((char*) clientName.c_str(), (char*)mqtt_user, (char *)mqtt_pass, topicWill.c_str(), 2, true, "false"))
+    boolean connected = false;
+    if (mqtt_user[0] != '\0')
+    {
+      sendToDebug(String("*IR: MQTT user:")+ mqtt_user + "\n");
+      sendToDebug("*IR: MQTT pass: ********\n");
+      connected = mqttClient.connect((char*) clientName.c_str(), (char*)mqtt_user, (char *)mqtt_pass, topicWill.c_str(), 2, true, "false");
+    }
+    else
+    {
+      sendToDebug("*IR: MQTT No User/PWD\n");
+      connected = mqttClient.connect((char*) clientName.c_str(), topicWill.c_str(), 2, true, "false");
+    }
+    if (connected)
     {
       mqttClient.publish(topicWill.c_str(), "true", true);
       sendToDebug("*IR: Connected to MQTT broker\n");
@@ -436,6 +482,9 @@ void connect_to_MQTT()
       IPAddress myIp = WiFi.localIP();
       char myIpString[24];
       sprintf(myIpString, "%d.%d.%d.%d", myIp[0], myIp[1], myIp[2], myIp[3]);
+      #ifdef DISPLAY_SIZE
+      printOled(String("MQTT-Connected\nIP:") + myIpString);
+      #endif
       sprintf(myTopic, "%s/info/ip", mqtt_prefix);
       mqttClient.publish((char*)myTopic, (char*) myIpString);
       sprintf(myTopic, "%s/info/type", mqtt_prefix);
@@ -454,6 +503,9 @@ void connect_to_MQTT()
     }
     else
     {
+      #ifdef DISPLAY_SIZE
+      printOled("MQTT\nConnection Failed");
+      #endif
       sendToDebug(String("*IR: MQTT connect failed, rc=") + mqttClient.state() + " try again in 5 seconds\n");
       // Wait 5 seconds before retrying
       for (int i = 0; i<10; i++)
@@ -466,7 +518,7 @@ void connect_to_MQTT()
       #ifdef LED_PIN
       digitalWrite(LED_PIN, HIGH);
       #endif
-      conn_counter = conn_counter-1;
+      conn_counter--;
     }
   }
   if (conn_counter==0)

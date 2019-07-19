@@ -10,25 +10,23 @@
 #define SLOT_SIZE 300   // Size of single slot
 #define SEQ_SIZE 10     // Raw sequnece size
 
-//#define DEBUG X
-
 #define VERSION "0.10"
 
-#ifdef DEBUG
- // dev device (wemos)
-#define RECV_PIN 13    // D7 - GPIO13
-#define TRANS_PIN 14   // D5 - GPIO14
-#define TRIGGER_PIN 15 // D8 - GPIO15
-#define LED_PIN 2      // D4 - GPIO2
-#define BUTTON_ACTIVE_LEVEL HIGH
-
-#else
- // production device - ESP01
+#ifdef BOARD_ESP01
+// production device - ESP01
 #define RECV_PIN 0    // D3 - GPIO0 - IR detector/demodulator
 #define TRANS_PIN 3   // RX - GPIO3 - IR LED trasmitter
 #define TRIGGER_PIN 2 // D4 - GPIO2 - trigger reset (press and hold after boot - 5 seconds)
 //#define LED_PIN 1      // D4 - GPIO2
 #define BUTTON_ACTIVE_LEVEL LOW
+
+#else
+// dev device (wemos, esp12e)
+#define RECV_PIN 13    // D7 - GPIO13
+#define TRANS_PIN 14   // D5 - GPIO14
+#define TRIGGER_PIN 15 // D8 - GPIO15
+#define LED_PIN 2      // D4 - GPIO2
+#define BUTTON_ACTIVE_LEVEL HIGH
 #endif
 
 #define   TRANSMITTER_FREQ 38
@@ -64,6 +62,9 @@
 #include <ArduinoJson.h>          // https://github.com/bblanchon/ArduinoJson (id: 64)
 #include <EEPROM.h>
 #include <ESP8266httpUpdate.h>
+#ifdef DISPLAY_SIZE
+#include "SSD1306.h" // alias for `#include "SSD1306Wire.h"`
+#endif
 
 // Global variables
 extern uint16_t rawIrData[SLOT_SIZE+1]; // RAW data storage
@@ -90,7 +91,12 @@ extern unsigned long lastTSMQTTReconect; // Last timestamp of MQTT reconnect
 extern unsigned long autoStartFreq; // Frequency of autostart
 extern bool autoStartSecond;
 extern const bool useDebug;
+#ifdef DISPLAY_SIZE
+extern SSD1306 display;
+extern unsigned long lastDisplay; // Last timestamp, display was used
 
+void printOled(String message);
+#endif
 // ------------------------------------------------
 // STRUCTURES
 struct EEpromDataStruct {
@@ -114,11 +120,10 @@ String macToStr(const uint8_t* mac);
 void saveConfigCallback ();
 void loadDefaultIR();
 void connect_to_MQTT();
-void  getIrEncoding (decode_results *results, char * result_encoding);
+void getIrEncoding (decode_results *results, char * result_encoding);
 
 void MQTTcallback(char* topic, byte* payload, unsigned int length);
 void connect_to_MQTT();
 void loadDefaultIR();
 void sendToDebug(String message);
-
 #endif

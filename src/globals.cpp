@@ -38,10 +38,14 @@ const bool useDebug = false;
 // ------------------------------------------------
 // Global objects
 
+#ifdef DISPLAY_SIZE
+unsigned long lastDisplay = 0;
+SSD1306  display(0x3c, 4, 5, (OLEDDISPLAY_GEOMETRY)DISPLAY_SIZE); // Address, SDA, SCL
+#endif
 IRrecv irrecv(RECV_PIN);
 IRsend irsend(TRANS_PIN);
 
 WiFiClient wifiClient;
 WiFiClientSecure wifiClientSecure;
 PubSubClient mqttClient;
- EEpromDataStruct EEpromData;
+EEpromDataStruct EEpromData;

@@ -6,7 +6,7 @@
 unsigned long StrToUL(String inputString)
 {
   unsigned long result = 0;
-  for (int i = 0; i < inputString.length(); i++)
+  for (unsigned int i = 0; i < inputString.length(); i++)
   {
     char c = inputString.charAt(i);
     if (c < '0' || c > '9') break;
@@ -157,3 +157,14 @@ void  getIrEncoding (decode_results *results, char * result_encoding)
     case PANASONIC:    strncpy(result_encoding,"PANASONIC\0",11);    break ;
   }
 }
+
+#ifdef DISPLAY_SIZE
+void printOled (String message)
+{
+  lastDisplay = millis();
+
+  display.clear();
+  display.drawString(0, 0, message);
+  display.display();
+}
+#endif

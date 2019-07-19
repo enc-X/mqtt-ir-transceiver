@@ -70,6 +70,17 @@ void setup(void)
   #ifdef LED_PIN
   pinMode(LED_PIN,OUTPUT);
   #endif
+
+  #ifdef DISPLAY_SIZE
+  // Initialising the UI will init the display too.
+  display.init();
+
+  display.flipScreenVertically();
+  display.setFont(ArialMT_Plain_24);
+  printOled("MQTT-IR");
+  display.setFont(ArialMT_Plain_10);
+  #endif
+
   if (SPIFFS.begin())
   {
     sendToDebug("*IR: mounted file system\n");
@@ -228,7 +239,7 @@ void setup(void)
   }
 
   sendToDebug(String("*IR: Connected to ")+String (WiFi.SSID())+"\n");
-  sendToDebug(String("*IR: IP address: ")+String(WiFi.localIP())+"\n");
+  sendToDebug(String("*IR: IP address: ")+WiFi.localIP().toString()+"\n");
 
   clientName += "IRGW-";
   uint8_t mac[6];
@@ -249,6 +260,9 @@ void setup(void)
  */
 void loop(void)
 {
+  #ifdef DISPLAY_SIZE
+  if ((millis() - lastDisplay) > 20000UL) printOled(String(""));
+  #endif
 
   if (MQTTMode)
   {
@@ -267,20 +281,24 @@ void loop(void)
       char myTopic[100];
       char myTmp[50];
       char myValue[500];
+      String myMessage = "";
       getIrEncoding (&results, myTmp);
       if (results.decode_type == PANASONIC)
       { //Panasonic has address
         // structure "prefix/typ/bits[/panasonic_address]"
         sprintf(myTopic, "%s/receiver/%s/%d/%d", mqtt_prefix, myTmp, results.bits, results.address );
+        myMessage = String("Received ") + myTmp + "/" + results.bits + "/" + results.address + "\n";
       }
       else
       {
         sprintf(myTopic, "%s/receiver/%s/%d", mqtt_prefix, myTmp, results.bits );
+        if ((strncmp(myTmp,"NEC",3) != 0) || ((int)results.bits != 0))  myMessage = String("Received ") + myTmp + "/" + results.bits + "\n";
       }
       if (results.decode_type != UNKNOWN)
       {
         // any other has code and bits
-        sprintf(myValue, "%d", results.value);
+        sprintf(myValue, "%d", (int)results.value);
+        if (myMessage != "") myMessage += myValue;
         mqttClient.publish((char*) myTopic, (char*) myValue );
       }
       else if (rawMode==true)
@@ -295,8 +313,13 @@ void loop(void)
         }
         myString.toCharArray(myValue,500);
         sprintf(myTopic, "%s/receiver/raw", mqtt_prefix );
+        myMessage = String("Received Raw\n") + myValue;
         mqttClient.publish( (char*) myTopic, (char*) myValue );
       }
+      else myMessage = "Received unknown";
+      #ifdef DISPLAY_SIZE
+      if (myMessage != "") printOled(myMessage);
+      #endif
       irrecv.resume();              // Prepare for the next value
     }
   }
@@ -327,6 +350,9 @@ void loop(void)
     if (rawIR1size>0)
     {
       sendToDebug("*IR: Button pressed - transmitting 1\n");
+      #ifdef DISPLAY_SIZE
+      printOled("Send Button 1 raw");
+      #endif
       irsend.sendRaw(rawIR1, rawIR1size, TRANSMITTER_FREQ);
     }
     #ifdef LED_PIN
@@ -343,6 +369,9 @@ void loop(void)
     if (rawIR2size>0)
     {
       sendToDebug("*IR: Button released - transmitting 2\n");
+      #ifdef DISPLAY_SIZE
+      printOled("Send Button 2 raw");
+      #endif
       irsend.sendRaw(rawIR2, rawIR2size, TRANSMITTER_FREQ);
     }
     #ifdef LED_PIN
@@ -358,6 +387,9 @@ void loop(void)
       if (rawIR2size>0)
       {
         sendToDebug("*IR: Auto sender - transmitting 2\n");
+        #ifdef DISPLAY_SIZE
+        printOled("Send Auto 2 raw");
+        #endif
         irsend.sendRaw(rawIR2, rawIR2size, TRANSMITTER_FREQ);
       }
       #ifdef LED_PIN
@@ -374,6 +406,9 @@ void loop(void)
       if (rawIR1size>0)
       {
         sendToDebug("*IR: Auto sender - transmitting 1\n");
+        #ifdef DISPLAY_SIZE
+        printOled("Send Auto 1 raw");
+        #endif
         irsend.sendRaw(rawIR1, rawIR1size, TRANSMITTER_FREQ);
       }
       autoStartSecond = true;
